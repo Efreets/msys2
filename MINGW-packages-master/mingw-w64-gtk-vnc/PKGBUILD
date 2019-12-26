@@ -1,0 +1,60 @@
+# Maintainer: Andrea Zagli <andrea.zagli.free@gmail.com>
+
+_realname=gtk-vnc
+pkgbase=mingw-w64-${_realname}
+pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
+pkgver=1.0.0
+pkgrel=1
+arch=('any')
+pkgdesc="VNC viewer widget for GTK+ (mingw-w64)"
+options=('strip' 'staticlibs')
+depends=("${MINGW_PACKAGE_PREFIX}-cyrus-sasl"
+         "${MINGW_PACKAGE_PREFIX}-gnutls"
+         "${MINGW_PACKAGE_PREFIX}-gtk3"
+         "${MINGW_PACKAGE_PREFIX}-libgcrypt"
+         "${MINGW_PACKAGE_PREFIX}-libgpg-error"
+         "${MINGW_PACKAGE_PREFIX}-libview"
+         "${MINGW_PACKAGE_PREFIX}-zlib")
+makedepends=("${MINGW_PACKAGE_PREFIX}-gcc"
+             "${MINGW_PACKAGE_PREFIX}-gobject-introspection"
+             "${MINGW_PACKAGE_PREFIX}-gtk-doc"
+             "${MINGW_PACKAGE_PREFIX}-meson"
+             "${MINGW_PACKAGE_PREFIX}-ninja"
+             "${MINGW_PACKAGE_PREFIX}-pkg-config"
+             "${MINGW_PACKAGE_PREFIX}-vala")
+options=('strip' 'staticlibs')
+license=("GPL 2.1")
+url="https://www.gnome.org"
+source=(https://download.gnome.org/sources/${_realname}/${pkgver%.*}/${_realname}-${pkgver}.tar.xz
+        001-fix-pkgconfig-files.patch)
+sha256sums=('a81a1f1a79ad4618027628ffac27d3391524c063d9411c7a36a5ec3380e6c080'
+            'b6a7412ba0842c7b56464a70c35e7f98f5323c8b534229914b9701465e2d853c')
+
+prepare() {
+  cd "${srcdir}"/${_realname}-${pkgver}
+  patch -p1 -i ${srcdir}/001-fix-pkgconfig-files.patch
+}
+
+build() {
+  [[ -d "${srcdir}"/build-${MINGW_CHOST} ]] && rm -rf "${srcdir}/build-${MINGW_CHOST}"
+  mkdir -p "${srcdir}/build-${MINGW_CHOST}" && cd "${srcdir}/build-${MINGW_CHOST}"
+
+  ${MINGW_PREFIX}/bin/meson \
+    --buildtype=plain \
+    -Dwith-vala=true \
+    "../${_realname}-${pkgver}"
+
+  ${MINGW_PREFIX}/bin/ninja
+}
+
+package() {
+  cd "${srcdir}/build-${MINGW_CHOST}"
+  DESTDIR="${pkgdir}${MINGW_PREFIX}" ${MINGW_PREFIX}/bin/ninja install
+
+  local _PRE_WIN="$(cygpath -m ${MINGW_PREFIX})"
+  for pcfile in  "${pkgdir}${MINGW_PREFIX}"/lib/pkgconfig/*.pc; do
+    sed -s "s|${_PRE_WIN}|${MINGW_PREFIX}|g" -i "${pcfile}"
+  done
+
+  install -Dm644 "${srcdir}/${_realname}-${pkgver}/COPYING.LIB" "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/COPYING.LIB"
+}

@@ -1,0 +1,82 @@
+# Maintainer: J. Peter Mugaas <jpmugaas@suddenlink.net>
+
+_realname=spirv-tools
+pkgbase=mingw-w64-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-${_realname}")
+pkgver=2020.1
+pkgrel=2
+pkgdesc="API and commands for processing SPIR-V modules (mingw-w64)"
+arch=('any')
+url="https://www.khronos.org/vulkan/"
+license=('custom')
+groups=("${MINGW_PACKAGE_PREFIX}-vulkan-devel")
+depends=("${MINGW_PACKAGE_PREFIX}-gcc-libs")
+makedepends=("${MINGW_PACKAGE_PREFIX}-cmake"
+             "${MINGW_PACKAGE_PREFIX}-python"
+             "git")
+source=("git+https://github.com/KhronosGroup/SPIRV-Tools.git#tag=v${pkgver}"
+        "git+https://github.com/KhronosGroup/SPIRV-Headers.git"
+        001-cmake-files-location.patch)
+sha256sums=('SKIP'
+            'SKIP'
+            'b76834f15d7af8c268897fac1584e94199c976a57dafb2c4390e0fce28934776')
+
+prepare() {
+  cd SPIRV-Tools
+  patch -p1 -i ${srcdir}/001-cmake-files-location.patch
+}
+
+build() {
+  [[ -d "${srcdir}"/build-${CARCH}-shared ]] && rm -rf "${srcdir}"/build-${CARCH}-shared
+  mkdir -p "${srcdir}"/build-${CARCH}-shared && cd "${srcdir}"/build-${CARCH}-shared
+
+  declare -a extra_config
+  if check_option "debug" "n"; then
+    extra_config+=("-DCMAKE_BUILD_TYPE=Release")
+  else
+    extra_config+=("-DCMAKE_BUILD_TYPE=Debug")
+  fi
+
+  CFLAGS+=" -Wno-switch"
+  CXXFLAGS+=" -Wno-switch"
+
+  msg2 "Building shared library"
+  MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX=" \
+  ${MINGW_PREFIX}/bin/cmake \
+      -G'MSYS Makefiles' \
+      -DCMAKE_INSTALL_PREFIX=${MINGW_PREFIX} \
+      "${extra_config[@]}" \
+      -DBUILD_SHARED_LIBS=ON \
+      -DSPIRV-Headers_SOURCE_DIR=${srcdir}/SPIRV-Headers \
+      ../SPIRV-Tools
+  make
+
+  msg2 "Building static library"
+  [[ -d "${srcdir}"/build-${CARCH}-static ]] && rm -rf "${srcdir}"/build-${CARCH}-static
+  mkdir -p "${srcdir}"/build-${CARCH}-static && cd "${srcdir}"/build-${CARCH}-static
+  MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX=" \
+  ${MINGW_PREFIX}/bin/cmake \
+      -G'MSYS Makefiles' \
+      -DCMAKE_INSTALL_PREFIX=${MINGW_PREFIX} \
+      "${extra_config[@]}" \
+      -DBUILD_SHARED_LIBS=OFF \
+      -DSPIRV-Headers_SOURCE_DIR=${srcdir}/SPIRV-Headers \
+      ../SPIRV-Tools
+  make
+}
+
+package() {
+  cd "${srcdir}"/build-${CARCH}-shared
+  make DESTDIR="${pkgdir}" install
+
+  cd "${srcdir}"/build-${CARCH}-static
+  make DESTDIR="${pkgdir}" install
+
+  install -dm755 "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}"
+  install -m644 ${srcdir}/SPIRV-Tools/LICENSE "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/"
+
+  local _WIN_PREFIX=$(cygpath -am ${MINGW_PREFIX})
+  for _f in "${pkgdir}${MINGW_PREFIX}"/lib/pkgconfig/*.pc; do
+    sed -e "s|${_WIN_PREFIX}|${MINGW_PREFIX}|g" -i ${_f}
+  done
+}

@@ -1,0 +1,69 @@
+# Maintainer: Drew Waranis <drew@waran.is>
+
+_realname=jsoncpp
+pkgbase=mingw-w64-${_realname}
+pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
+pkgver=1.9.2
+pkgrel=1
+pkgdesc="A C++ library for interacting with JSON (mingw-w64)"
+arch=('any')
+url="https://github.com/open-source-parsers/jsoncpp"
+license=('MIT')
+makedepends=("${MINGW_PACKAGE_PREFIX}-gcc"
+             "${MINGW_PACKAGE_PREFIX}-cmake"
+             "${MINGW_PACKAGE_PREFIX}-python")
+options=('staticlibs' '!strip' '!buildflags')
+source=("${_realname}-${pkgver}.tar.gz"::"https://github.com/open-source-parsers/jsoncpp/archive/${pkgver}.tar.gz"
+        001-library-name.patch)
+sha256sums=('77a402fb577b2e0e5d0bdc1cf9c65278915cdb25171e3452c68b6da8a561f8f0'
+            '6af9f06bb026aa9592123ad53004b9c3b2c94e9c9bbe5852790ce11f728afb57')
+
+prepare() {
+  cd "${srcdir}/${_realname}-${pkgver}"
+  patch -p1 -i "${srcdir}/001-library-name.patch"
+}
+
+build() {
+  declare -a extra_config
+  if check_option "debug" "n"; then
+    extra_config+=("-DCMAKE_BUILD_TYPE=Release")
+  else
+    extra_config+=("-DCMAKE_BUILD_TYPE=Debug")
+  fi
+
+  [[ -d "${srcdir}/build-${MINGW_CHOST}-static" ]] && rm -rf "${srcdir}/build-${MINGW_CHOST}-static"
+  mkdir -p "${srcdir}/build-${MINGW_CHOST}-static" && cd "${srcdir}/build-${MINGW_CHOST}-static"
+
+  MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX=" \
+  ${MINGW_PREFIX}/bin/cmake \
+    -G"MSYS Makefiles" \
+    -DCMAKE_INSTALL_PREFIX=${MINGW_PREFIX} \
+    -DJSONCPP_WITH_CMAKE_PACKAGE=ON \
+    -DBUILD_SHARED_LIBS=OFF \
+    ${extra_config} \
+    ../${_realname}-${pkgver}
+
+  make
+
+  [[ -d "${srcdir}/build-${MINGW_CHOST}-shared" ]] && rm -rf "${srcdir}/build-${MINGW_CHOST}-shared"
+  mkdir -p "${srcdir}/build-${MINGW_CHOST}-shared" && cd "${srcdir}/build-${MINGW_CHOST}-shared"
+
+  MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX=" \
+  ${MINGW_PREFIX}/bin/cmake \
+    -G"MSYS Makefiles" \
+    -DCMAKE_INSTALL_PREFIX=${MINGW_PREFIX} \
+    -DJSONCPP_WITH_CMAKE_PACKAGE=ON \
+    -DBUILD_SHARED_LIBS=ON \
+    ${extra_config} \
+    ../${_realname}-${pkgver}
+
+  make
+}
+
+package() {
+  cd "${srcdir}/build-${MINGW_CHOST}-static"
+  make DESTDIR=${pkgdir} install
+
+  cd "${srcdir}/build-${MINGW_CHOST}-shared"
+  make DESTDIR=${pkgdir} install
+}

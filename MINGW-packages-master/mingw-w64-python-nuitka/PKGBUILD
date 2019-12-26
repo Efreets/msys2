@@ -1,0 +1,52 @@
+# Maintainer: Alexey Pavlov <alexpux@gmail.com>
+
+_realname=nuitka
+pkgbase=mingw-w64-python-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+pkgver=0.6.7
+pkgrel=1
+pkgdesc="Python to native compiler (mingw-w64)"
+arch=('any')
+license=('APACHE')
+url="https://www.nuitka.net/"
+depends=("${MINGW_PACKAGE_PREFIX}-python-setuptools")
+source=("http://nuitka.net/releases/Nuitka-${pkgver}.tar.gz")
+noextract=(Nuitka-$pkgver.tar.gz)
+sha256sums=('aacb1ff95ae9a490ccdb84a4b7cf99efbd1bca93a160808d86ff1e175a988c8b')
+
+prepare() {
+  [[ -d $srcdir/${_realname}-${pkgver} ]] && rm -rf ${srcdir}/${_realname}-${pkgver}
+  tar -xzvf ${srcdir}/${_realname}-${pkgver}.tar.gz -C ${srcdir} || \
+  tar -xzvf ${srcdir}/${_realname}-${pkgver}.tar.gz -C ${srcdir}
+
+  rm -rf python-build-${CARCH} | true
+  cp -r "Nuitka-${pkgver}" "python-build-${CARCH}"
+}
+
+build() {
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python setup.py build
+}
+
+package() {
+  cd "${srcdir}/python-build-${CARCH}"
+
+  local _mingw_prefix=$(cygpath -am ${MINGW_PREFIX})
+
+  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
+  ${MINGW_PREFIX}/bin/python setup.py install --prefix=${MINGW_PREFIX} --root="${pkgdir}" -O1 --skip-build
+
+  mv "${pkgdir}${MINGW_PREFIX}"/bin/nuitka.bat "${pkgdir}${MINGW_PREFIX}"/bin/nuitka3.bat
+  mv "${pkgdir}${MINGW_PREFIX}"/bin/nuitka-run.bat "${pkgdir}${MINGW_PREFIX}"/bin/nuitka3-run.bat
+  pushd "${pkgdir}${MINGW_PREFIX}"/bin > /dev/null
+  for filename in nuitka3 nuitka3-run; do
+    sed -e "s|...\python|python3|g" \
+        -i ${filename}.bat
+    sed -e "s|${_mingw_prefix}/bin/|/usr/bin/env |g" -i ${filename}-script.py
+  done
+  popd > /dev/null
+
+}

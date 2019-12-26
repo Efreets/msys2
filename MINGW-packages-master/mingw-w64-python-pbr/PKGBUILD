@@ -1,0 +1,67 @@
+# Contributor: Frederic Wang <fred.wang@free.fr>
+
+_realname=pbr
+pkgbase=mingw-w64-python-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+pkgver=5.4.4
+pkgrel=1
+pkgdesc="Python Build Reasonableness (mingw-w64)"
+url="https://pypi.python.org/pypi/pbr"
+license=("Apache")
+arch=('any')
+depends=("${MINGW_PACKAGE_PREFIX}-python-setuptools")
+checkdepends=("${MINGW_PACKAGE_PREFIX}-python-stestr"
+              "${MINGW_PACKAGE_PREFIX}-python-testscenarios"
+              "${MINGW_PACKAGE_PREFIX}-python-testresources"
+              "${MINGW_PACKAGE_PREFIX}-python-testrepository"
+              "${MINGW_PACKAGE_PREFIX}-python-mock"
+              "${MINGW_PACKAGE_PREFIX}-python-virtualenv"
+              "${MINGW_PACKAGE_PREFIX}-python-wheel"
+              "${MINGW_PACKAGE_PREFIX}-python-sphinx")
+install=${_realname}3-${CARCH}.install
+options=('!strip')
+source=("${_realname}-${pkgver}.tar.gz"::"https://github.com/openstack-dev/pbr/archive/${pkgver}.tar.gz")
+sha256sums=('da108ecb5bc3561c6b553363d0e2a357df687c409c4cd521a6b650fbc4df3a75')
+
+prepare() {
+  cd ${srcdir}
+  sed -e 's/wheel.install/wheel.wheelfile/' \
+      -e 's/wheel_file.zipfile/wheel_file/' \
+      -i ${_realname}-$pkgver/pbr/tests/test_packaging.py
+
+  rm -rf python-build-${CARCH} | true
+  cp -r "${_realname}-${pkgver}" "python-build-${CARCH}"
+
+  export PBR_VERSION=${pkgver}
+}
+
+build() {
+  msg "Python build for ${CARCH}" 
+  cd "${srcdir}/python-build-${CARCH}"
+  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
+      ${MINGW_PREFIX}/bin/python setup.py build
+}
+
+check() {
+  msg "Python test for ${CARCH}"
+  cd "${srcdir}/python-build-${CARCH}"
+  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
+    PYTHON=${MINGW_PREFIX}/bin/python ${MINGW_PREFIX}/bin/stestr run || warning "Tests failed"
+}
+
+package() {
+  cd ${srcdir}/python-build-${CARCH}
+  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
+    ${MINGW_PREFIX}/bin/python setup.py install --prefix=${MINGW_PREFIX} --root="${pkgdir}" --optimize=1 --skip-build
+
+  install -Dm644 "${srcdir}/${_realname}-${pkgver}/LICENSE" "${pkgdir}${MINGW_PREFIX}/share/licenses/python-${_realname}/LICENSE"
+
+  local PREFIX_WIN=$(cygpath -wm ${MINGW_PREFIX})
+  # fix python command in files
+  for _ff in ${pkgdir}${MINGW_PREFIX}/bin/*; do
+    sed -e "s|${PREFIX_WIN}|${MINGW_PREFIX}|g" -i ${_ff}
+  done
+}

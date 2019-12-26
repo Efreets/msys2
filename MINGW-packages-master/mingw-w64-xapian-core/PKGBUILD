@@ -1,0 +1,44 @@
+# Maintainer: J. Peter Mugaas <jpmugaas@suddenlink.net>
+
+_realname=xapian-core
+pkgbase=mingw-w64-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-${_realname}")
+depends=("${MINGW_PACKAGE_PREFIX}-gcc-libs" "${MINGW_PACKAGE_PREFIX}-zlib")
+epoch=1
+pkgver=1.4.15
+pkgrel=1
+pkgdesc='Open source search engine library (mingw-w64)'
+arch=('any')
+url='https://www.xapian.org/'
+license=('GPL')
+# xapian config requires libxapian.la
+options=('libtool')
+source=("https://oligarchy.co.uk/xapian/${pkgver}/${_realname}-${pkgver}.tar.xz")
+sha256sums=('b168e95918a01e014fb6a6cbce26e535f80da4d4791bfa5a0e0051fcb6f950ea')
+
+prepare() {
+  cd ${srcdir}/${_realname}-${pkgver}
+}
+
+build() {
+  [[ -d "${srcdir}"/build-${CARCH} ]] && rm -rf "${srcdir}"/build-${CARCH}
+  mkdir -p "${srcdir}"/build-${CARCH} && cd "${srcdir}"/build-${CARCH}
+
+  LDFLAGS+=" -fstack-protector"
+
+  LIBS=" -lssp" \
+  ../${_realname}-${pkgver}/configure \
+    --prefix=${MINGW_PREFIX} \
+    --build=${MINGW_CHOST} \
+    --host=${MINGW_CHOST} \
+    --target=${MINGW_CHOST} \
+    --enable-static \
+    --enable-shared
+
+  make
+}
+
+package() {
+  cd "${srcdir}"/build-${CARCH}
+  make install DESTDIR="${pkgdir}"
+}

@@ -1,0 +1,51 @@
+# Maintainer: J. Peter Mugaas <jpmugaas@suddenlink.net>
+
+_realname=packaging
+pkgbase=mingw-w64-python-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+pkgver=20.3
+pkgrel=1
+pkgdesc="Core utilities for Python packages (mingw-w64)"
+arch=('any')
+url="https://github.com/pypa/packaging"
+license=('Apache')
+depends=("${MINGW_PACKAGE_PREFIX}-python"
+         "${MINGW_PACKAGE_PREFIX}-python-pyparsing"
+         "${MINGW_PACKAGE_PREFIX}-python-six"
+         "${MINGW_PACKAGE_PREFIX}-python-attrs")
+makedepends=("${MINGW_PACKAGE_PREFIX}-python-setuptools")
+checkdepends=("${MINGW_PACKAGE_PREFIX}-python-pytest-runner"
+              "${MINGW_PACKAGE_PREFIX}-python-pretend"
+              "${MINGW_PACKAGE_PREFIX}-python-coverage")
+source=(https://pypi.io/packages/source/p/packaging/${_realname}-${pkgver}.tar.gz)
+sha256sums=('3c292b474fda1671ec57d46d739d072bfd495a4f51ad01a055121d81e952b7a3')
+
+prepare() {  
+  cd "${srcdir}"
+  rm -rf python-build-${CARCH} | true
+  cp -r "${_realname}-${pkgver}" "python-build-${CARCH}"
+}
+
+build() {
+  msg "Python build for ${CARCH}"
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python setup.py build
+}
+
+check() {
+  msg "Python test for ${CARCH}"
+  cd "${srcdir}/python-build-${CARCH}"
+  ${MINGW_PREFIX}/bin/python setup.py ptr
+}
+
+package() {
+  cd "${srcdir}/python-build-${CARCH}"
+  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
+  ${MINGW_PREFIX}/bin/python setup.py install --prefix=${MINGW_PREFIX} \
+    --root="${pkgdir}" --optimize=1 --skip-build
+
+  install -Dm644 LICENSE "${pkgdir}${MINGW_PREFIX}/share/licenses/python-${_realname}/COPYING"
+}

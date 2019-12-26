@@ -1,0 +1,48 @@
+# Maintainer: Ignacio Casal Quinteiro <icq@gnome.org>
+
+_realname=gedit-plugins
+pkgbase=mingw-w64-${_realname}
+pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
+pkgver=3.36.2
+pkgrel=1
+arch=('any')
+pkgdesc="Collection of plugins for the gedit Text Editor (mingw-w64)"
+depends=("${MINGW_PACKAGE_PREFIX}-gedit"
+         "${MINGW_PACKAGE_PREFIX}-libgit2-glib"
+         "${MINGW_PACKAGE_PREFIX}-libpeas")
+makedepends=("${MINGW_PACKAGE_PREFIX}-gcc"
+             "${MINGW_PACKAGE_PREFIX}-itstool"
+             "${MINGW_PACKAGE_PREFIX}-gettext"
+             "${MINGW_PACKAGE_PREFIX}-gobject-introspection"
+             "${MINGW_PACKAGE_PREFIX}-meson"
+             "${MINGW_PACKAGE_PREFIX}-ninja"
+             "${MINGW_PACKAGE_PREFIX}-pkg-config"
+             "${MINGW_PACKAGE_PREFIX}-python3"
+             "${MINGW_PACKAGE_PREFIX}-yelp-tools")
+options=('strip' 'staticlibs')
+license=("GPL")
+url="https://wiki.gnome.org/Apps/Gedit/ShippedPlugins"
+install=gedit-plugins-${CARCH}.install
+source=(https://download.gnome.org/sources/${_realname}/${pkgver%.*}/${_realname}-${pkgver}.tar.xz)
+sha256sums=('1151b955393f75b5ee59b51154fda4f1928f498fe986a5584d3cd440876a6af6')
+
+prepare() {
+  cd "${srcdir}"/${_realname}-${pkgver}
+}
+
+build() {
+  [[ -d build-${MINGW_CHOST} ]] && rm -rf build-${MINGW_CHOST}
+  mkdir -p build-${MINGW_CHOST} && cd build-${MINGW_CHOST}
+
+  ${MINGW_PREFIX}/bin/meson \
+    --buildtype=plain \
+    -Dplugin_findinfiles=false \
+    "../${_realname}-${pkgver}"
+
+  ninja
+}
+
+package() {
+  cd "${srcdir}/build-${MINGW_CHOST}"
+  DESTDIR="${pkgdir}${MINGW_PREFIX}" ninja install
+}

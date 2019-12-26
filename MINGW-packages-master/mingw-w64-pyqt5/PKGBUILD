@@ -1,0 +1,57 @@
+# Maintainer: Saul Ibarra Corretge <saghul@gmail.com>
+
+_realname=pyqt5
+pkgbase=mingw-w64-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-python-${_realname}")
+provides=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}")
+conflicts=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}"
+           "${MINGW_PACKAGE_PREFIX}-${_realname}-common")
+replaces=("${MINGW_PACKAGE_PREFIX}-python3-${_realname}"
+          "${MINGW_PACKAGE_PREFIX}-${_realname}-common")
+pkgver=5.14.2
+pkgrel=1
+pkgdesc="Qt5 bindings for Python (mingw-w64)"
+arch=('any')
+license=('GPL')
+url="https://riverbankcomputing.com/software/pyqt"
+depends=("${MINGW_PACKAGE_PREFIX}-python-sip"
+         "${MINGW_PACKAGE_PREFIX}-python"
+         "${MINGW_PACKAGE_PREFIX}-qt5"
+         "${MINGW_PACKAGE_PREFIX}-qtwebkit")
+makedepends=("${MINGW_PACKAGE_PREFIX}-gcc")
+options=('strip' 'staticlibs')
+source=(https://pypi.python.org/packages/source/P/PyQt5/PyQt5-${pkgver}.tar.gz
+        001-mingw-python.patch)
+sha256sums=('bd230c6fd699eabf1ceb51e13a8b79b74c00a80272c622427b80141a22269eb0'
+            '9acd5672557000861d31944e74874e58dd126cf07e21bab8fad4f55f866b03ed')
+
+prepare() {
+ cd "${srcdir}"/PyQt5-${pkgver}
+
+  #Apply patches
+  patch -p1 -i "${srcdir}"/001-mingw-python.patch
+}
+
+build() {
+  [[ -d python-${MINGW_CHOST} ]] && rm -rf python-${MINGW_CHOST}
+  cp -r PyQt5-${pkgver} python-${MINGW_CHOST}
+  pushd python-${MINGW_CHOST} > /dev/null
+
+    ${MINGW_PREFIX}/bin/python configure.py \
+      --confirm-license \
+      --qsci-api \
+      --no-dist-info \
+      --sipdir ${MINGW_PREFIX}/share/sip/PyQt5 \
+      -q ${MINGW_PREFIX}/bin/qmake.exe \
+      --verbose
+    
+    make V=1
+
+  popd > /dev/null
+}
+
+package(){
+  cd python-${MINGW_CHOST}
+  # INSTALL_ROOT is needed for the QtDesigner module, the other Makefiles use DESTDIR
+  make DESTDIR="${pkgdir}" INSTALL_ROOT="${pkgdir}" install
+}

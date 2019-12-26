@@ -1,0 +1,33 @@
+_realname=unibilium
+pkgbase=mingw-w64-${_realname}
+pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
+pkgver=2.1.0
+pkgrel=1
+pkgdesc="A terminfo parsing library (mingw-w64)"
+arch=('any')
+url='https://github.com/neovim/unibilium'
+license=(LGPL3)
+source=("${_realname}-${pkgver}.tar.gz::https://github.com/neovim/unibilium/archive/v${pkgver}.tar.gz"
+        "0001-unibilium-msys-makefile.patch")
+sha256sums=('05bf97e357615e218126f7ac086e7056a23dc013cfac71643b50a18ad390c7d4'
+            '62d9b9e6650e4abc44afdb800469ca2332b70abbcacfd6e554f0a0ce7f4d3351')
+
+prepare() {
+  cd "${_realname}-${pkgver}"
+  patch -Np1 -i "${srcdir}/0001-unibilium-msys-makefile.patch"
+}
+
+build() {
+  cd ${_realname}-${pkgver}
+  make PREFIX=${MINGW_PREFIX}
+}
+
+check() {
+  cd ${_realname}-${pkgver}
+  make test
+}
+
+package() {
+  cd ${_realname}-${pkgver}
+  make install PREFIX=${MINGW_PREFIX} DESTDIR="${pkgdir}"
+}

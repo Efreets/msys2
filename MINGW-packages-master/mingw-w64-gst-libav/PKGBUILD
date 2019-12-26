@@ -1,0 +1,49 @@
+# Maintainer: AlexWMF <alexxwmf@gmail.com>
+
+_realname=gst-libav
+pkgbase=mingw-w64-${_realname}
+pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
+pkgver=1.16.2
+pkgrel=1
+pkgdesc="GStreamer libav (mingw-w64)"
+arch=('any')
+url="https://gstreamer.freedesktop.org/"
+license=("LGPL")
+makedepends=("${MINGW_PACKAGE_PREFIX}-gobject-introspection"
+             "${MINGW_PACKAGE_PREFIX}-gtk-doc"
+             "${MINGW_PACKAGE_PREFIX}-nasm"
+             "${MINGW_PACKAGE_PREFIX}-meson"
+             "${MINGW_PACKAGE_PREFIX}-ninja")
+depends=("${MINGW_PACKAGE_PREFIX}-gst-plugins-base"
+         "${MINGW_PACKAGE_PREFIX}-ffmpeg")
+options=(!libtool strip staticlibs)
+source=(${url}/src/${_realname}/${_realname}-${pkgver}.tar.xz)
+sha256sums=('c724f612700c15a933c7356fbeabb0bb9571fb5538f8b1b54d4d2d94188deef2')
+
+prepare() {
+  cd ${srcdir}/${_realname}-${pkgver}
+
+}
+
+build() {
+  [[ -d "${srcdir}/build-${MINGW_CHOST}" ]] && rm -rf "${srcdir}/build-${MINGW_CHOST}"
+  mkdir -p "${srcdir}/build-${MINGW_CHOST}"
+  cd "${srcdir}/build-${MINGW_CHOST}"
+
+  ${MINGW_PREFIX}/bin/meson \
+    --buildtype plain \
+    --wrap-mode=nofallback \
+    -Dauto_features=enabled \
+    -Dpackage-origin='https://www.msys2.org' \
+    ../${_realname}-${pkgver}
+
+  ninja
+}
+
+package() {
+  cd "${srcdir}/build-${MINGW_CHOST}"
+
+  DESTDIR="${pkgdir}${MINGW_PREFIX}" ninja install
+
+  rm -f ${pkgdir}${MINGW_PREFIX}/lib/gstreamer*/*.a
+}

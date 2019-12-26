@@ -1,0 +1,43 @@
+# Maintainer: David Grayson <davidegrayson@gmail.com>
+
+_realname=catch
+pkgbase=mingw-w64-${_realname}
+pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
+pkgver=2.11.3
+pkgrel=1
+pkgdesc="Multi-paradigm automated test framework for C++ and Objective-C (mingw-w64)"
+arch=('any')
+url='https://github.com/philsquared/Catch'
+makedepends=("${MINGW_PACKAGE_PREFIX}-gcc"
+             "${MINGW_PACKAGE_PREFIX}-cmake"
+             "${MINGW_PACKAGE_PREFIX}-python")
+license=('custom')
+source=(${_realname}-${pkgver}.tar.gz::https://github.com/catchorg/Catch2/archive/v${pkgver}.tar.gz)
+sha256sums=('9a6967138062688f04374698fce4ce65908f907d8c0fe5dfe8dc33126bd46543')
+
+build() {
+  rm -rf "${srcdir}/build-${MINGW_CHOST}"
+  mkdir -p "${srcdir}/build-${MINGW_CHOST}"
+  cd "${srcdir}/build-${MINGW_CHOST}"
+  
+  MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX=" \
+  ${MINGW_PREFIX}/bin/cmake.exe \
+    -G"MSYS Makefiles" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=${MINGW_PREFIX} \
+    "../Catch2-${pkgver}"
+
+  make
+}
+
+check() {
+  cd "${srcdir}/build-${MINGW_CHOST}"
+  ./SelfTest.exe
+}
+
+package() {
+  cd "${srcdir}/build-${MINGW_CHOST}"
+  make DESTDIR=${pkgdir} install
+
+  install -Dm644 ${srcdir}/Catch2-${pkgver}/LICENSE.txt "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/LICENSE.txt"
+}

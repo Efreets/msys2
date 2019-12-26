@@ -1,0 +1,79 @@
+# Maintainer: Alexey Pavlov <alexpux@gmail.com>
+
+_realname=gtk3
+pkgbase=mingw-w64-${_realname}
+pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
+pkgver=3.24.18
+pkgrel=1
+pkgdesc="GObject-based multi-platform GUI toolkit (v3) (mingw-w64)"
+arch=('any')
+url="https://www.gtk.org/"
+license=("LGPL")
+install=gtk3-${CARCH}.install
+makedepends=("${MINGW_PACKAGE_PREFIX}-gcc"
+             "${MINGW_PACKAGE_PREFIX}-pkg-config"
+             "${MINGW_PACKAGE_PREFIX}-gtk-doc"
+             "${MINGW_PACKAGE_PREFIX}-meson"
+             "${MINGW_PACKAGE_PREFIX}-gobject-introspection"
+             "${MINGW_PACKAGE_PREFIX}-sassc"
+             "${MINGW_PACKAGE_PREFIX}-libxslt")
+depends=("${MINGW_PACKAGE_PREFIX}-gcc-libs"
+         "${MINGW_PACKAGE_PREFIX}-adwaita-icon-theme"
+         "${MINGW_PACKAGE_PREFIX}-atk"
+         "${MINGW_PACKAGE_PREFIX}-cairo"
+         "${MINGW_PACKAGE_PREFIX}-gdk-pixbuf2"
+         "${MINGW_PACKAGE_PREFIX}-glib2"
+         "${MINGW_PACKAGE_PREFIX}-json-glib"
+         "${MINGW_PACKAGE_PREFIX}-libepoxy"
+         "${MINGW_PACKAGE_PREFIX}-pango"
+         "${MINGW_PACKAGE_PREFIX}-shared-mime-info")
+options=('strip' '!debug' 'staticlibs')
+source=("https://download.gnome.org/sources/gtk+/${pkgver%.*}/gtk+-${pkgver}.tar.xz"
+        "0002-Revert-Quartz-Set-the-popup-menu-type-hint-before-re.patch"
+        "0003-gtkwindow-Don-t-force-enable-CSD-under-Windows.patch"
+        "0004-Disable-low-level-keyboard-hook.patch")
+sha256sums=('f5eaff7f4602e44a9ca7bfad5382d7a73e509a8f00b0bcab91c198d096172ad2'
+            '5cdebb11098d241da955d4662904215275fa7a54d52877cc38c4ff4a3087fafd'
+            'b84a7f38f0af80680bee143d431f2a7bae53899efb337de0f67a1b4d9b59fa02'
+            'e553083298495f9581ae1454b1046a22b83e81862311b30de984057eec859708')
+
+prepare() {
+  cd "${srcdir}/gtk+-${pkgver}"
+
+  # https://gitlab.gnome.org/GNOME/gtk/issues/2019
+  patch -p1 -i "${srcdir}"/0002-Revert-Quartz-Set-the-popup-menu-type-hint-before-re.patch
+
+  # https://gitlab.gnome.org/GNOME/gtk/issues/760
+  patch -p1 -i "${srcdir}"/0003-gtkwindow-Don-t-force-enable-CSD-under-Windows.patch
+
+  patch -p1 -i "${srcdir}"/0004-Disable-low-level-keyboard-hook.patch
+}
+
+build() {
+  [[ -d "${srcdir}"/build-${CARCH} ]] && rm -rf "${srcdir}"/build-${CARCH}
+  mkdir "${srcdir}"/build-${CARCH} && cd "${srcdir}"/build-${CARCH}
+
+  CFLAGS+=" -DG_ENABLE_DEBUG -DG_DISABLE_CAST_CHECKS"
+  meson \
+    --buildtype=plain \
+    -Dbroadway_backend=true \
+    -Dman=true \
+    "../gtk+-${pkgver}"
+
+  ninja
+}
+
+package() {
+  cd "${srcdir}/build-${CARCH}"
+
+  DESTDIR="${pkgdir}${MINGW_PREFIX}" ninja install
+
+  mv ${pkgdir}${MINGW_PREFIX}/bin/gtk-update-icon-cache{,-3.0}.exe
+  mv ${pkgdir}${MINGW_PREFIX}/share/man/man1/gtk-update-icon-cache{,-3.0}.1
+
+  for pcfile in  "${pkgdir}${MINGW_PREFIX}"/lib/pkgconfig/*.pc; do
+    sed -s "s|$(cygpath -m ${MINGW_PREFIX})|${MINGW_PREFIX}|g" -i "${pcfile}"
+  done
+
+  install -Dm644 "${srcdir}/gtk+-${pkgver}/COPYING" "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/COPYING"
+}

@@ -1,0 +1,47 @@
+# Maintainer: Alexey Pavlov <alexpux@gmail.com>
+
+_realname=adwaita-icon-theme
+pkgbase=mingw-w64-${_realname}
+pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
+pkgver=3.36.0
+pkgrel=1
+pkgdesc="GNOME icon theme (mingw-w64)"
+arch=('any')
+url="https://www.gnome.org"
+license=("GPL")
+makedepends=("intltool" "icon-naming-utils")
+depends=("${MINGW_PACKAGE_PREFIX}-hicolor-icon-theme"
+         "${MINGW_PACKAGE_PREFIX}-librsvg")
+options=(!libtool strip staticlibs)
+install=theme-${CARCH}.install
+source=(
+  "https://download.gnome.org/sources/${_realname}/${pkgver:0:4}/${_realname}-${pkgver}.tar.xz"
+)
+sha256sums=('1a172112b6da482d3be3de6a0c1c1762886e61e12b4315ae1aae9b69da1ed518')
+
+prepare() {
+  cd ${srcdir}/${_realname}-${pkgver}
+}
+
+build() {
+  [[ -d ${srcdir}/build-${MINGW_CHOST} ]] && rm -rf ${srcdir}/build-${MINGW_CHOST}
+  mkdir ${srcdir}/build-${MINGW_CHOST}
+  cd ${srcdir}/build-${MINGW_CHOST}
+  ../${_realname}-${pkgver}/configure \
+    --prefix=${MINGW_PREFIX} \
+    --build=${MINGW_CHOST} \
+    --host=${MINGW_CHOST}
+
+  make
+}
+
+package() {
+  cd "${srcdir}/build-${MINGW_CHOST}"
+  make DESTDIR="$pkgdir" install
+  mkdir -p ${pkgdir}${MINGW_PREFIX}/lib
+  mv ${pkgdir}${MINGW_PREFIX}/share/pkgconfig ${pkgdir}${MINGW_PREFIX}/lib/
+
+  install -Dm644 "${srcdir}/${_realname}-${pkgver}"/COPYING ${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/COPYING
+  install -Dm644 "${srcdir}/${_realname}-${pkgver}"/COPYING_LGPL ${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/COPYING_LGPL
+  install -Dm644 "${srcdir}/${_realname}-${pkgver}"/COPYING_CCBYSA3 ${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/COPYING_CCBYSA3
+}

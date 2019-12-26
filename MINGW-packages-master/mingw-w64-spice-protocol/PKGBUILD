@@ -1,0 +1,40 @@
+# Maintainer: Andrea Zagli <andrea.zagli.free@gmail.com>
+
+_realname=spice-protocol
+pkgbase=mingw-w64-${_realname}
+pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
+pkgver=0.14.1
+pkgrel=1
+arch=('any')
+pkgdesc="SPICE protocol headers (mingw-w64)"
+options=('strip' 'staticlibs')
+license=("GPL 2")
+url="https://www.spice-space.org/"
+source=(https://www.spice-space.org/download/releases/${_realname}-${pkgver}.tar.bz2)
+sha256sums=('79e6da61834b080a143234c1cd4c099a8ead1a64b5039489610b72ab282c132a')
+
+prepare() {
+  cd "${srcdir}"/${_realname}-${pkgver}
+}
+
+build() {
+  [[ -d "${srcdir}"/build-${MINGW_CHOST} ]] && rm -rf "${srcdir}"/build-${MINGW_CHOST}
+  mkdir -p build-${MINGW_CHOST}
+  cd build-${MINGW_CHOST}
+
+  ../${_realname}-${pkgver}/configure \
+    --prefix=${MINGW_PREFIX} \
+    --libexecdir=${MINGW_PREFIX}/lib \
+    --host=${MINGW_CHOST} \
+    --target=${MINGW_CHOST} \
+    --build=${MINGW_CHOST}
+
+  make
+}
+
+package() {
+  cd "${srcdir}/build-${MINGW_CHOST}"
+  make DESTDIR=${pkgdir} install
+
+  install -Dm644 "${srcdir}/${_realname}-${pkgver}"/COPYING ${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/COPYING
+}

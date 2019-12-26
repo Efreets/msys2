@@ -1,0 +1,57 @@
+# Maintainer: Alberto Fanjul Alonso <albfan@gnome.org>
+
+_realname=gitg
+pkgbase=mingw-w64-${_realname}
+pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
+pkgver=3.32.1
+pkgrel=2
+arch=('any')
+pkgdesc="git repository viewer for GTK+/GNOME (mingw-w64)"
+depends=("${MINGW_PACKAGE_PREFIX}-adwaita-icon-theme"
+         "${MINGW_PACKAGE_PREFIX}-gtksourceview3"
+         "${MINGW_PACKAGE_PREFIX}-libpeas"
+         "${MINGW_PACKAGE_PREFIX}-enchant"
+         "${MINGW_PACKAGE_PREFIX}-iso-codes"
+         "${MINGW_PACKAGE_PREFIX}-python3-gobject"
+         "${MINGW_PACKAGE_PREFIX}-gsettings-desktop-schemas"
+         "${MINGW_PACKAGE_PREFIX}-libsoup"
+         "${MINGW_PACKAGE_PREFIX}-libsecret"
+         "${MINGW_PACKAGE_PREFIX}-gtkspell3"
+         "${MINGW_PACKAGE_PREFIX}-libgit2-glib"
+         "${MINGW_PACKAGE_PREFIX}-libdazzle"
+         "${MINGW_PACKAGE_PREFIX}-libgee")
+makedepends=("${MINGW_PACKAGE_PREFIX}-meson"
+             "${MINGW_PACKAGE_PREFIX}-ninja"
+             "${MINGW_PACKAGE_PREFIX}-gcc"
+             "${MINGW_PACKAGE_PREFIX}-pkg-config"
+             "${MINGW_PACKAGE_PREFIX}-vala"
+             "${MINGW_PACKAGE_PREFIX}-gobject-introspection"
+             "intltool"
+             "itstool"
+             "gettext-devel")
+options=('strip')
+license=("GPL2+")
+url="https://wiki.gnome.org/Apps/Gitg"
+install=${_realname}-${CARCH}.install
+source=(https://download.gnome.org/sources/${_realname}/${pkgver:0:4}/${_realname}-$pkgver.tar.xz)
+sha256sums=('24a4aabf8a42aa2e783e1fb5996ebb3c2a82a01b9689269f1329517ef124ef5a')
+
+build() {
+  [[ -d build-${MINGW_CHOST} ]] && rm -rf build-${MINGW_CHOST}
+  mkdir -p build-${MINGW_CHOST}
+  cd build-${MINGW_CHOST}
+
+  meson \
+    --buildtype plain \
+    -Dwerror=false \
+    ../${_realname}-${pkgver}
+
+  ninja
+}
+
+package() {
+  cd "$srcdir/build-${MINGW_CHOST}"
+  DESTDIR=${pkgdir}${MINGW_PREFIX} ninja install
+
+  install -Dm644 "${srcdir}/${_realname}-${pkgver}/COPYING" "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/COPYING"
+}
